@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SSC CGL Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#2b3a55">
+
+<style>
+/* ---------- THEME COLOURS ---------- */
+:root {
+  --bg: #f3f3f1;
+  --card: #ffffff;
+  --text: #1c1e21;
+  --muted: #6a6e75;
+  --border: #d8d8d4;
+  --accent: #2b3a55;
+  --accent-text: #ffffff;
+  --done: #3f6b52;
+}
+
+[data-theme="dark"] {
+  --bg: #111214;
+  --card: #1a1c1f;
+  --text: #e3e4e6;
+  --muted: #8d9199;
+  --border: #2b2e33;
+  --accent: #9fb0cc;
+  --accent-text: #111214;
+  --done: #7fae90;
+}
+
+/* ---------- BASE ---------- */
+* { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 14px 90px;
+}
+
+h1 { font-size: 20px; font-weight: 600; margin: 4px 0 14px; }
+h2 { font-size: 15px; font-weight: 600; margin: 0; }
+
+.label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.muted { color: var(--muted); font-size: 12px; }
+
+/* ---------- LAYOUT HELPERS ---------- */
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.grow { flex: 1; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px;
+  margin: 10px 0;
+}
+
+/* ---------- CONTROLS ---------- */
+button, select, input, textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+button { cursor: pointer; }
+button:hover { border-color: var(--accent); }
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+button.icon {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: var(--muted);
+}
+button.icon:hover { color: var(--text); }
+
+svg.ic {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- TOP BAR ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ---------- PROGRESS BARS ---------- */
+.bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 8px 0 4px;
+}
+.bar > div { height: 100%; background: var(--done); }
+
+.stack { display: flex; height: 10px; border-radius: 2px; overflow: hidden; background: var(--border); }
+.s0 { background: #6f737a; }
+.s1 { background: #8a97ab; }
+.s2 { background: #5f7fa8; }
+.s3 { background: #5d8a72; }
+.s4 { background: #3f6b52; }
+
+/* Legend wraps onto new lines on narrow screens */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 10px;
+}
+
+/* Stop anything from pushing the page wider than the screen */
+.wrap, .card, .row > * { min-width: 0; }
+select { max-width: 100%; }
+
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 1px; margin-right: 5px; }
+
+/* ---------- TOPICS ---------- */
+.topic { padding: 8px 0; border-top: 1px solid var(--border); }
+.topic .name { flex: 1; min-width: 130px; }
+.topic.done .name { text-decoration: line-through; color: var(--muted); }
+
+textarea { width: 100%; min-height: 90px; margin-top: 8px; resize: vertical; }
+
+/* ---------- BOTTOM NAV ---------- */
+.nav {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+.nav button {
+  flex: 1;
+  border: none;
+  border-radius: 0;
+  padding: 14px;
+  background: none;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.nav button.active {
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* ---------- WELCOME PAGE ---------- */
+.welcome { text-align: center; padding: 80px 10px; }
+.welcome input { width: 80%; max-width: 320px; margin: 16px 0; padding: 10px; }
+</style>
+</head>
+
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+/* =========================================================
+   CONSTANTS
+   ========================================================= */
+const STATUS = [
+  "Not read",
+  "Read",
+  "Question practiced",
+  "Revision 1",
+  "Revision 2"
+];
+
+// A topic counts as complete from this status onwards
+const DONE_FROM = 3;
+
+const DATA_KEY  = "ssc_cgl_tracker_v1";
+const THEME_KEY = "ssc_cgl_theme";
+
+/* =========================================================
+   ICONS (simple line icons)
+   ========================================================= */
+const svg = (paths) =>
+  '<svg class="ic" viewBox="0 0 24 24">' + paths + '</svg>';
+
+const ICON = {
+  plus:   svg('<path d="M12 5v14M5 12h14"/>'),
+  edit:   svg('<path d="M4 20h4L19 9l-4-4L4 16z"/>'),
+  trash:  svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
+  note:   svg('<path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/>'),
+  back:   svg('<path d="M15 5l-7 7 7 7"/>'),
+  next:   svg('<path d="M9 5l7 7-7 7"/>'),
+  sun:    svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'),
+  moon:   svg('<path d="M20 14A8 8 0 0110 4a8 8 0 1010 10z"/>'),
+  export: svg('<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>'),
+  import: svg('<path d="M12 15V4M7 9l5-5 5 5M5 20h14"/>'),
+  user:   svg('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>')
+};
+
+/* =========================================================
+   DEFAULT SYLLABUS (users can edit everything)
+   ========================================================= */
+const DEFAULT_SYLLABUS = {
+  "Quantitative Aptitude": {
+    "Number System": ["Divisibility", "HCF & LCM"],
+    "Arithmetic": ["Percentage", "Profit & Loss", "Ratio", "Time & Work", "Time, Speed & Distance"],
+    "Algebra": ["Linear Equations", "Quadratic"],
+    "Geometry": ["Triangles", "Circles"]
+  },
+  "Reasoning": {
+    "Verbal": ["Analogy", "Coding-Decoding", "Series", "Syllogism"],
+    "Non-Verbal": ["Mirror Image", "Paper Folding"]
+  },
+  "English": {
+    "Grammar": ["Tenses", "Error Spotting", "Fill in the Blanks"],
+    "Vocabulary": ["Synonyms/Antonyms", "Idioms", "One Word Substitution"]
+  },
+  "General Awareness": {
+    "History": ["Ancient", "Medieval", "Modern"],
+    "Polity": ["Constitution", "Parliament"],
+    "Geography": ["India", "World"]
+  }
+};
+
+/* =========================================================
+   STATE + STORAGE
+   ========================================================= */
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+function buildDefaultSubjects() {
+  return Object.entries(DEFAULT_SYLLABUS).map(([subject, chapters]) => ({
+    id: uid(),
+    name: subject,
+    chapters: Object.entries(chapters).map(([chapter, topics]) => ({
+      id: uid(),
+      name: chapter,
+      topics: topics.map(t => ({ id: uid(), name: t, status: 0, note: "" }))
+    }))
+  }));
+}
+
+let data = null;
+try { data = JSON.parse(localStorage.getItem(DATA_KEY)); } catch (e) {}
+if (!data) data = { name: "", subjects: buildDefaultSubjects() };
+
+let tab = "syllabus";        // "syllabus" or "progress"
+let currentSubjectId = null; // which subject is opened
+const openNotes = {};        // topicId -> true when notes box is open
+
+function save() {
+  try {
+    localStorage.setItem(DATA_KEY, JSON.stringify(data));
+  } catch (e) {
+    alert("Could not save. Storage may be full or blocked.");
+  }
+}
+
+/* ---------- Theme ---------- */
+function getTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved) return saved;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function setTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem(THEME_KEY, theme);
+}
+
+setTheme(getTheme());
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+function esc(text) {
+  const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+  return String(text).replace(/[&<>"]/g, c => map[c]);
+}
+
+function allTopics(subject) {
+  if (subject) return subject.chapters.flatMap(c => c.topics);
+  return data.subjects.flatMap(s => allTopics(s));
+}
+
+function stats(topics) {
+  const done = topics.filter(t => t.status >= DONE_FROM).length;
+  const total = topics.length;
+  const percent = total ? Math.round((done / total) * 100) : 0;
+  return { done, total, percent };
+}
+
+function progressBar(topics) {
+  const s = stats(topics);
+  return `
+    <div class="bar"><div style="width:${s.percent}%"></div></div>
+    <div class="muted">${s.done} of ${s.total} topics complete (${s.percent}%)</div>`;
+}
+
+function currentSubject() {
+  return data.subjects.find(s => s.id === currentSubjectId);
+}
+
+function findChapter(chapterId) {
+  return currentSubject().chapters.find(c => c.id === chapterId);
+}
+
+function findTopic(chapterId, topicId) {
+  return findChapter(chapterId).topics.find(t => t.id === topicId);
+}
+
+/* =========================================================
+   VIEWS
+   ========================================================= */
+function render() {
+  const app = document.getElementById("app");
+
+  // First visit: ask for name
+  if (!data.name) {
+    app.innerHTML = renderWelcome();
+    return;
+  }
+
+  let html = renderTopBar();
+  html += `<h1>Welcome, ${esc(data.name)}</h1>`;
+
+  if (tab === "syllabus") {
+    html += (currentSubject() ? renderSubject() : renderSubjectList());
+  } else {
+    html += renderProgress();
+  }
+
+  html += renderNav();
+  app.innerHTML = html;
+}
+
+function renderWelcome() {
+  return `
+    <div class="welcome">
+      <div class="label">SSC CGL</div>
+      <h1>Preparation Tracker</h1>
+      <p class="muted">Enter your name to begin.</p>
+      <input id="nameInput" placeholder="Your name"><br>
+      <button class="primary" data-action="setName">Continue</button>
+    </div>`;
+}
+
+function renderTopBar() {
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  return `
+    <div class="topbar">
+      <span class="label">SSC CGL Tracker</span>
+      <button class="icon" data-action="toggleTheme" title="Switch theme">
+        ${isDark ? ICON.sun : ICON.moon}
+      </button>
+    </div>`;
+}
+
+function renderNav() {
+  return `
+    <div class="nav">
+      <button class="${tab === "syllabus" ? "active" : ""}" data-action="goTab" data-value="syllabus">SYLLABUS</button>
+      <button class="${tab === "progress" ? "active" : ""}" data-action="goTab" data-value="progress">PROGRESS</button>
+    </div>`;
+}
+
+function renderSubjectList() {
+  let html = `
+    <div class="row">
+      <span class="label grow">Subjects</span>
+      <button class="primary" data-action="addSubject">${ICON.plus} Subject</button>
+    </div>`;
+
+  data.subjects.forEach(s => {
+    html += `
+      <div class="card">
+        <div class="row">
+          <b class="grow" style="cursor:pointer" data-action="openSubject" data-id="${s.id}">${esc(s.name)}</b>
+          <button class="icon" data-action="renameSubject" data-id="${s.id}" title="Rename">${ICON.edit}</button>
+          <button class="icon" data-action="deleteSubject" data-id="${s.id}" title="Delete">${ICON.trash}</button>
+          <button class="icon" data-action="openSubject" data-id="${s.id}" title="Open">${ICON.next}</button>
+        </div>
+        ${progressBar(allTopics(s))}
+      </div>`;
+  });
+
+  return html;
+}
+
+function renderSubject() {
+  const subject = currentSubject();
+
+  let html = `
+    <div class="row">
+      <button data-action="goBack">${ICON.back}</button>
+      <h2 class="grow">${esc(subject.name)}</h2>
+      <button class="primary" data-action="addChapter">${ICON.plus} Chapter</button>
+    </div>`;
+
+  subject.chapters.forEach(chapter => {
+    html += `
+      <div class="card">
+        <div class="row">
+          <b class="grow">${esc(chapter.name)}</b>
+          <button class="icon" data-action="addTopic" data-chapter="${chapter.id}" title="Add topic">${ICON.plus}</button>
+          <button class="icon" data-action="renameChapter" data-chapter="${chapter.id}" title="Rename">${ICON.edit}</button>
+          <button class="icon" data-action="deleteChapter" data-chapter="${chapter.id}" title="Delete">${ICON.trash}</button>
+        </div>
+        ${progressBar(chapter.topics)}
+        ${chapter.topics.map(t => renderTopic(chapter, t)).join("")}
+      </div>`;
+  });
+
+  return html;
+}
+
+function renderTopic(chapter, topic) {
+  const isDone = topic.status >= DONE_FROM;
+  const options = STATUS.map((label, i) =>
+    `<option value="${i}" ${i === topic.status ? "selected" : ""}>${label}</option>`
+  ).join("");
+
+  const notesBox = openNotes[topic.id]
+    ? `<textarea data-action="editNote" data-chapter="${chapter.id}" data-topic="${topic.id}"
+         placeholder="Notes / important points (text only)">${esc(topic.note)}</textarea>`
+    : "";
+
+  return `
+    <div class="topic ${isDone ? "done" : ""}">
+      <div class="row">
+        <span class="name">${esc(topic.name)}</span>
+        <select data-action="setStatus" data-chapter="${chapter.id}" data-topic="${topic.id}">${options}</select>
+        <button class="icon" data-action="toggleNote" data-topic="${topic.id}" title="Notes"
+          style="${topic.note ? "color:var(--accent)" : ""}">${ICON.note}</button>
+        <button class="icon" data-action="renameTopic" data-chapter="${chapter.id}" data-topic="${topic.id}" title="Rename">${ICON.edit}</button>
+        <button class="icon" data-action="deleteTopic" data-chapter="${chapter.id}" data-topic="${topic.id}" title="Delete">${ICON.trash}</button>
+      </div>
+      ${notesBox}
+    </div>`;
+}
+
+function renderProgress() {
+  const topics = allTopics();
+  const total = topics.length;
+  const overall = stats(topics);
+  const counts = STATUS.map((_, i) => topics.filter(t => t.status === i).length);
+
+  const stackBar = counts.map((c, i) =>
+    `<div class="s${i}" style="width:${total ? (c / total) * 100 : 0}%"></div>`
+  ).join("");
+
+  const legend = STATUS.map((label, i) =>
+    `<span><span class="dot s${i}"></span>${label}: ${counts[i]}</span>`
+  ).join("");
+
+  let html = `
+    <div class="card">
+      <div class="label">Overall completion</div>
+      <h2 style="font-size:28px;margin:4px 0">${overall.percent}%</h2>
+      ${progressBar(topics)}
+      <div class="stack" style="margin-top:12px">${stackBar}</div>
+      <div class="muted legend">${legend}</div>
+      <p class="muted">A topic counts as complete only after Revision 1 or Revision 2.</p>
+    </div>`;
+
+  data.subjects.forEach(subject => {
+    html += `<div class="card"><b>${esc(subject.name)}</b>${progressBar(allTopics(subject))}`;
+
+    subject.chapters.forEach(chapter => {
+      const s = stats(chapter.topics);
+      html += `
+        <div class="row" style="margin-top:10px">
+          <span class="grow">${esc(chapter.name)}</span>
+          <span class="muted">${s.done}/${s.total}</span>
+        </div>
+        <div class="bar"><div style="width:${s.percent}%"></div></div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  html += `
+    <div class="card row">
+      <button data-action="exportData">${ICON.export} Export</button>
+      <button data-action="importData">${ICON.import} Import</button>
+      <button data-action="changeName">${ICON.user} Change name</button>
+      <input type="file" id="importFile" accept=".json" hidden>
+    </div>`;
+
+  return html;
+}
+
+/* =========================================================
+   ACTIONS  (one function per button)
+   Each receives the element's data-* attributes.
+   Return false to skip the automatic save + redraw.
+   ========================================================= */
+const actions = {
+
+  setName() {
+    const value = document.getElementById("nameInput").value.trim();
+    if (!value) return false;
+    data.name = value;
+  },
+
+  changeName() {
+    const value = prompt("Your name", data.name);
+    if (!value) return false;
+    data.name = value.trim();
+  },
+
+  toggleTheme() {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    setTheme(isDark ? "light" : "dark");
+  },
+
+  goTab(d) { tab = d.value; },
+
+  /* ----- Subjects ----- */
+  openSubject(d) { currentSubjectId = d.id; },
+  goBack() { currentSubjectId = null; },
+
+  addSubject() {
+    const name = prompt("Subject name");
+    if (!name) return false;
+    data.subjects.push({ id: uid(), name: name, chapters: [] });
+  },
+
+  renameSubject(d) {
+    const subject = data.subjects.find(s => s.id === d.id);
+    const name = prompt("Rename subject", subject.name);
+    if (!name) return false;
+    subject.name = name;
+  },
+
+  deleteSubject(d) {
+    if (!confirm("Delete this subject and everything inside it?")) return false;
+    data.subjects = data.subjects.filter(s => s.id !== d.id);
+  },
+
+  /* ----- Chapters ----- */
+  addChapter() {
+    const name = prompt("Chapter name");
+    if (!name) return false;
+    currentSubject().chapters.push({ id: uid(), name: name, topics: [] });
+  },
+
+  renameChapter(d) {
+    const chapter = findChapter(d.chapter);
+    const name = prompt("Rename chapter", chapter.name);
+    if (!name) return false;
+    chapter.name = name;
+  },
+
+  deleteChapter(d) {
+    if (!confirm("Delete this chapter?")) return false;
+    const subject = currentSubject();
+    subject.chapters = subject.chapters.filter(c => c.id !== d.chapter);
+  },
+
+  /* ----- Topics ----- */
+  addTopic(d) {
+    const name = prompt("Topic name");
+    if (!name) return false;
+    findChapter(d.chapter).topics.push({ id: uid(), name: name, status: 0, note: "" });
+  },
+
+  renameTopic(d) {
+    const topic = findTopic(d.chapter, d.topic);
+    const name = prompt("Rename topic", topic.name);
+    if (!name) return false;
+    topic.name = name;
+  },
+
+  deleteTopic(d) {
+    if (!confirm("Delete this topic?")) return false;
+    const chapter = findChapter(d.chapter);
+    chapter.topics = chapter.topics.filter(t => t.id !== d.topic);
+  },
+
+  toggleNote(d) { openNotes[d.topic] = !openNotes[d.topic]; },
+
+  /* ----- Backup ----- */
+  exportData() {
+    const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "ssc-tracker-backup.json";
+    link.click();
+    return false;
+  },
+
+  importData() {
+    document.getElementById("importFile").click();
+    return false;
+  }
+};
+
+/* =========================================================
+   EVENT LISTENERS
+   ========================================================= */
+
+// Clicks on any element with data-action
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  if (el.tagName === "SELECT" || el.tagName === "TEXTAREA") return;
+
+  const fn = actions[el.dataset.action];
+  if (!fn) return;
+
+  const result = fn(el.dataset);
+  if (result === false) return;
+
+  save();
+  render();
+});
+
+// Status dropdown + file import
+document.addEventListener("change", (e) => {
+  const el = e.target;
+
+  if (el.dataset.action === "setStatus") {
+    findTopic(el.dataset.chapter, el.dataset.topic).status = Number(el.value);
+    save();
+    render();
+  }
+
+  if (el.id === "importFile") {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const imported = JSON.parse(reader.result);
+        if (!imported.subjects) throw new Error("bad file");
+        data = imported;
+        save();
+        render();
+      } catch (err) {
+        alert("Invalid backup file.");
+      }
+    };
+    reader.readAsText(el.files[0]);
+  }
+});
+
+// Notes typing (saves without redrawing, so the cursor stays)
+document.addEventListener("input", (e) => {
+  const el = e.target;
+  if (el.dataset.action === "editNote") {
+    findTopic(el.dataset.chapter, el.dataset.topic).note = el.value;
+    save();
+  }
+});
+
+// Start
+render();
+
+// Makes the app installable and usable offline
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
